@@ -5,7 +5,6 @@
 
 import { useState } from 'react';
 import ConversationInput from '@/components/ConversationInput';
-import SummaryChips from '@/components/SummaryChips';
 import ItineraryOptions from '@/components/ItineraryOptions';
 import TripMap from '@/components/TripMap';
 import PreferencesPanel from '@/components/PreferencesPanel';
@@ -97,21 +96,14 @@ export default function Home() {
     }
   };
 
-  // Update preferences
-  const handlePreferencesChange = (newPreferences: TripPreferences) => {
+  // Update preferences and trip request
+  const handlePreferencesChange = (newPreferences: TripPreferences, newTripRequest: TripRequest) => {
     setPreferences(newPreferences);
-
-    // Update trip request with new budget
-    const updatedRequest = {
-      ...tripRequest,
-      budget: newPreferences.budget,
-      preferences: newPreferences,
-    };
-    setTripRequest(updatedRequest);
+    setTripRequest(newTripRequest);
 
     // Regenerate plan if we have one
     if (tripPlan) {
-      generateTripPlan(updatedRequest);
+      generateTripPlan(newTripRequest);
     }
   };
 
@@ -169,25 +161,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* Summary Chips */}
-        {Object.keys(tripRequest).length > 0 && (
-          <section>
-            <SummaryChips
-              request={tripRequest}
-              onEdit={handleEditRequest}
-            />
-          </section>
-        )}
-
-        {/* Preferences Panel */}
-        {Object.keys(tripRequest).length > 0 && (
-          <section>
-            <PreferencesPanel
-              preferences={preferences}
-              onChange={handlePreferencesChange}
-            />
-          </section>
-        )}
+        {/* Preferences Panel - Always visible */}
+        <section>
+          <PreferencesPanel
+            preferences={preferences}
+            tripRequest={tripRequest}
+            onChange={handlePreferencesChange}
+          />
+        </section>
 
         {/* Trip Plan Results */}
         {tripPlan && (

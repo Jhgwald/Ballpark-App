@@ -3,7 +3,7 @@
 // Conversation Input Component
 // Handles text and voice input from the user
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface ConversationInputProps {
   onSubmit: (message: string) => void;
@@ -13,6 +13,42 @@ interface ConversationInputProps {
 export default function ConversationInput({ onSubmit, isLoading }: ConversationInputProps) {
   const [message, setMessage] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [browserSupportsVoice, setBrowserSupportsVoice] = useState(true);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Check if browser supports Web Speech API
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setBrowserSupportsVoice(false);
+        return;
+      }
+
+      // Initialize speech recognition
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setMessage(transcript);
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -23,21 +59,30 @@ export default function ConversationInput({ onSubmit, isLoading }: ConversationI
     }
   };
 
-  // Simulate voice input (in real app, would use Web Speech API)
+  // Handle voice input using Web Speech API
   const handleVoiceInput = () => {
-    setIsListening(true);
+    if (!browserSupportsVoice) {
+      alert('Voice input is not supported in your browser. Please use Chrome or Edge.');
+      return;
+    }
 
-    // Mock voice recognition
-    setTimeout(() => {
-      const mockPhrases = [
-        "Plan me a 10-day trip in August starting from New York",
-        "I want to see 5 baseball games with a budget of $2500",
-        "Find me a trip from Boston with stops in Chicago and St. Louis",
-      ];
-      const randomPhrase = mockPhrases[Math.floor(Math.random() * mockPhrases.length)];
-      setMessage(randomPhrase);
+    if (!recognitionRef.current) {
+      alert('Voice recognition not initialized. Please refresh the page.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
       setIsListening(false);
-    }, 2000);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        setIsListening(false);
+      }
+    }
   };
 
   return (
@@ -79,7 +124,9 @@ export default function ConversationInput({ onSubmit, isLoading }: ConversationI
         {/* Submit button */}
         <div className="flex justify-between items-center">
           <p className="text-sm text-gray-600">
-            {isListening ? 'Listening...' : 'Type or use voice input to describe your trip'}
+            {isListening ? 'Listening... (speak now)' :
+             browserSupportsVoice ? 'Type or use voice input to describe your trip' :
+             'Type to describe your trip (voice not supported in this browser)'}
           </p>
 
           <button
